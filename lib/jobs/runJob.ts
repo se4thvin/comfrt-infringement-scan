@@ -54,9 +54,11 @@ export async function runJob(job: JobState): Promise<void> {
   const scored = new Map<string, ReturnType<typeof scoreText>>();
   let denialReason: DoneReason | null = null;
 
-  const statsTimer = setInterval(() => emitStats('searching'), 1000);
+  let currentPhase: 'searching' | 'imaging' | 'done' = 'searching';
+  const statsTimer = setInterval(() => emitStats(currentPhase), 1000);
 
   function emitStats(phase: 'searching' | 'imaging' | 'done') {
+    currentPhase = phase;
     publish(job, {
       type: 'stats',
       data: {
@@ -158,11 +160,12 @@ export async function runJob(job: JobState): Promise<void> {
     }
 
     const reason: DoneReason = denialReason ?? budget.exhaustionReason() ?? 'complete';
+    emitStats('done'); // final stats must precede 'done' — clients close on 'done'
     publish(job, { type: 'done', data: { reason } });
   } catch (e) {
+    emitStats('done');
     publish(job, { type: 'done', data: { reason: 'error', message: (e as Error).message } });
   } finally {
     clearInterval(statsTimer);
-    emitStats('done');
   }
 }
