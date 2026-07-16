@@ -24,13 +24,16 @@ import { phashFromBuffer } from '../scoring/signals/imageHash';
  * provisional score, flagged; degradation is the default path, not a
  * try/catch bolt-on. */
 
+// Brand + category terms, plus the two most distinctive live product lines
+// (verified against comfrt.com's catalog 2026-07 — earlier drafts searched
+// product names the brand doesn't actually sell).
 const QUERIES = [
   'comfrt hoodie',
   'comfrt sweatshirt',
-  'comfrt cloud hoodie',
-  'comfrt half zip',
   'comfrt oversized hoodie',
-  'comfrt blanket hoodie',
+  'comfrt minimalist hoodie',
+  'comfrt quarter zip',
+  'comfrt sweatpants',
 ];
 const PAGES_PER_QUERY = 2;
 const PLATFORMS: Platform[] = ['amazon', 'ebay'];

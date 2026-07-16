@@ -10,9 +10,14 @@ as evidence arrives.
 ```bash
 npm install
 cp .env.example .env.local        # key is pre-filled from the brief
-npm run fetch-reference           # one-time: pulls ~8 authentic product images from comfrt.com
 npm run dev                       # then open http://localhost:3000 and hit "Run scan"
 ```
+
+The 8 authentic reference images are committed to the repo
+(`lib/reference/images/`), so scoring has zero runtime dependency on
+comfrt.com. To refresh them against the live catalog: `npm run fetch-reference`
+(uses Shopify's public `/products.json` — flagship handles are pinned in
+`scripts/fetch-reference.mjs` and mirrored by `REFERENCE_TITLES`).
 
 No network / no key? `MOCK_MODE=1 npm run dev` runs the identical pipeline
 against fixture listings (including synthetic reference images) — every code

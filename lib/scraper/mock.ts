@@ -17,26 +17,26 @@ interface MockItem {
 }
 
 const AMAZON_POOL: MockItem[] = [
-  { title: 'Comfrt Cloud Hoodie Oversized Unisex Fleece - Cream', price: 24.99, img: '0:none' },
-  { title: 'COMFRT Signature Hoodie Premium Soft Sweatshirt Anxiety Relief', price: 19.95, img: '1:slight' },
+  { title: 'Comfrt Minimalist Hoodie Oversized Unisex Fleece - Cream', price: 24.99, img: '0:none' },
+  { title: 'COMFRT Halo Lightweight Oversized Hoodie Premium Soft Anxiety Relief', price: 19.95, img: '1:slight' },
   { title: 'Cømfrt Style Oversized Hoodie Cloud Feel Plush', price: 15.99, img: '2:slight' },
   { title: 'Oversized Hoodie for Women Comfy Cloud Fleece Pullover', price: 27.5, img: '3:heavy' },
   { title: 'Comfrt Hoodie Dupe Viral TikTok Oversized Sweatshirt', price: 13.49, img: '0:slight' },
   { title: 'Hanes Mens Pullover EcoSmart Hooded Sweatshirt', price: 16.2 },
-  { title: 'Comfrt Cloud Half Zip Cropped Sweatshirt Womens', price: 22.0, img: '4:none' },
+  { title: 'Comfrt Varsity Quarter Zip Cropped Sweatshirt Womens', price: 22.0, img: '4:none' },
   { title: 'Weighted Blanket Hoodie Wearable Oversized Sherpa', price: 34.99, img: '5:heavy' },
   { title: 'USB C Charging Cable 6ft Braided 2-Pack', price: 8.99 },
-  { title: 'Comfrt Official Cloud Sweatpants Matching Set', price: 29.99, img: '6:slight' },
+  { title: 'Comfrt Official Airplane Mode Sweatpants Matching Set', price: 29.99, img: '6:slight' },
   { title: 'Gildan Adult Fleece Hoodie Multipack', price: 21.0 },
   { title: 'C0MFRT Oversized Hoodie Cloud Soft Anti Anxiety Sweatshirt', price: 11.99, img: '1:none' },
 ];
 
 const EBAY_POOL: MockItem[] = [
-  { title: 'Comfrt Cloud Hoodie Size L Cream NEW WITH TAGS', price: 18.0, img: '0:slight', auction: true },
-  { title: 'NWT Comfrt Signature Hoodie Lavender Oversized', price: 25.0, img: '2:none' },
+  { title: 'Comfrt Minimalist Hoodie Size L Cream NEW WITH TAGS', price: 18.0, img: '0:slight', auction: true },
+  { title: 'NWT Comfrt Snak Hoodie Lavender Oversized', price: 25.0, img: '2:none' },
   { title: 'comfrt hoodie replica high quality same factory', price: 9.99, img: '3:slight' },
   { title: 'Vintage Champion Reverse Weave Hoodie XL', price: 32.0, auction: true },
-  { title: 'Comfrt Cloud Blanket Hoodie Bundle x2 Wholesale', price: 21.5, img: '4:slight' },
+  { title: 'Comfrt Varsity Hoodie Bundle x2 Wholesale', price: 21.5, img: '4:slight' },
   { title: 'Oversized comfy cloud hoodie unbranded bulk lot 10pcs', price: 45.0, img: '5:heavy' },
   { title: 'COMFRT hoodie - authentic? see photos', price: 14.0, img: '6:heavy', auction: true },
   { title: 'Nike Tech Fleece Hoodie Grey Medium', price: 40.0 },
