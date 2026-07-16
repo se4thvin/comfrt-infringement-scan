@@ -27,16 +27,24 @@ export function normalizeAmazon(raw: unknown, sourceQuery: string): Listing[] {
     const priceNum =
       num(item.price) ?? parsePrice(str(item.price_string) ?? str(item.price));
 
+    // Sponsored results carry a giant /sspa/click redirect as their URL
+    // (seen live 2026-07). The canonical /dp/<asin> link is the stable
+    // takedown target — that's what this tool exists to produce.
+    const rawUrl = str(item.url);
+    const url =
+      rawUrl && !rawUrl.includes('/sspa/') ? rawUrl : `https://www.amazon.com/dp/${asin}`;
+
     out.push({
       key: `amazon:${asin}`,
       platform: 'amazon',
       id: asin,
       title,
-      url: str(item.url) ?? `https://www.amazon.com/dp/${asin}`,
+      url,
       imageUrl: str(item.image) ?? str(item.image_url) ?? str(item.thumbnail),
       price: priceNum,
       priceString: str(item.price_string) ?? (priceNum != null ? `$${priceNum}` : undefined),
-      sponsored: item.type === 'ad' || item.sponsored === true,
+      sponsored:
+        item.type === 'ad' || item.sponsored === true || rawUrl?.includes('/sspa/') === true,
       listingType: 'fixed',
       sourceQuery,
     });

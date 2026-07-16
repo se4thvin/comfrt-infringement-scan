@@ -53,7 +53,12 @@ export function applyImageSignal(
   if (listingHash === null || ref.hashes.length === 0) {
     image = {
       p: 0,
-      raw: { status: listingHash === null ? 'image unavailable or unhashable' : 'no reference set' },
+      raw: {
+        status:
+          listingHash === null
+            ? 'no image evidence (not prioritized within image budget, fetch failed, or unhashable)'
+            : 'no reference set',
+      },
       unavailable: true,
     };
   } else {

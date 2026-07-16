@@ -3,7 +3,7 @@ import { Limiter } from './limiter';
 import { publish, type JobState } from './store';
 import { ScraperClient, BudgetDenied, fetchWithTimeout } from '../scraper/client';
 import { normalizeAmazon } from '../scraper/amazon';
-import { normalizeEbay } from '../scraper/ebay';
+import { normalizeEbay, parseEbayHtml, structuredCameBackEmpty } from '../scraper/ebay';
 import type { Listing, Platform, DoneReason } from '../scraper/types';
 import { scoreText, applyImageSignal } from '../scoring/combine';
 import { prepareReferenceSet } from '../reference/prepare';
@@ -96,33 +96,65 @@ export async function runJob(job: JobState): Promise<void> {
       for (const platform of PLATFORMS)
         for (const query of QUERIES) pageJobs.push({ platform, query, page });
 
-    await Promise.all(
-      pageJobs.map(async (pj) => {
-        try {
+    // ScraperAPI's structured eBay extractor currently returns empty objects
+    // for exactly our query class (see ebay.ts). Adaptive per job: when a page
+    // hits the trap, the job flips to HTML mode (+1 request for that page);
+    // later pages skip structured entirely. Self-heals to zero-cost when
+    // ScraperAPI fixes their extractor.
+    let ebayHtmlMode = false;
+
+    const processPage = async (pj: { platform: Platform; query: string; page: number }) => {
+      try {
+        let listings;
+        if (pj.platform === 'amazon') {
+          listings = normalizeAmazon(await client.searchPage(pj), pj.query);
+        } else if (ebayHtmlMode) {
+          listings = parseEbayHtml(await client.ebaySearchHtml(pj), pj.query);
+        } else {
           const raw = await client.searchPage(pj);
-          const listings =
-            pj.platform === 'amazon'
-              ? normalizeAmazon(raw, pj.query)
-              : normalizeEbay(raw, pj.query);
-          for (const listing of listings) {
-            if (seen.has(listing.key)) continue; // dedupe by platform:id
-            seen.add(listing.key);
-            const s = scoreText(listing);
-            scored.set(listing.key, s);
-            publish(job, { type: 'listing', data: s });
+          if (structuredCameBackEmpty(raw)) {
+            ebayHtmlMode = true;
+            publish(job, {
+              type: 'warning',
+              data: {
+                message: `eBay structured API returned field-less items for "${pj.query}" p${pj.page} — switching this job to HTML parsing`,
+              },
+            });
+            listings = parseEbayHtml(await client.ebaySearchHtml(pj), pj.query);
+          } else {
+            listings = normalizeEbay(raw, pj.query);
           }
-        } catch (e) {
-          if (e instanceof BudgetDenied) {
-            denialReason = e.reason;
-            return; // expected under budget pressure — not an error
-          }
-          publish(job, {
-            type: 'warning',
-            data: { message: `${pj.platform} "${pj.query}" p${pj.page} failed: ${(e as Error).message}` },
-          });
         }
-      })
-    );
+        for (const listing of listings) {
+          if (seen.has(listing.key)) continue; // dedupe by platform:id
+          seen.add(listing.key);
+          const s = scoreText(listing);
+          scored.set(listing.key, s);
+          publish(job, { type: 'listing', data: s });
+        }
+      } catch (e) {
+        if (e instanceof BudgetDenied) {
+          denialReason = e.reason;
+          return; // expected under budget pressure — not an error
+        }
+        publish(job, {
+          type: 'warning',
+          data: { message: `${pj.platform} "${pj.query}" p${pj.page} failed: ${(e as Error).message}` },
+        });
+      }
+    };
+
+    // Probe eBay once BEFORE the fan-out. Concurrent page-1 dispatch would
+    // otherwise have every eBay request discover the structured-endpoint trap
+    // independently — ~6 wasted requests per job. One sequenced round-trip
+    // sets the mode for everyone; its results are used, so a healthy endpoint
+    // costs nothing extra.
+    const probeIdx = pageJobs.findIndex((p) => p.platform === 'ebay');
+    if (probeIdx >= 0) {
+      const [probe] = pageJobs.splice(probeIdx, 1);
+      await processPage(probe);
+    }
+    await Promise.all(pageJobs.map(processPage));
 
     // ---- Phase 2: image evidence, best provisional candidates first.
     emitStats('imaging');

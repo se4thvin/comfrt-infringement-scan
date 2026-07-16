@@ -54,14 +54,42 @@ export class ScraperClient {
     });
   }
 
+  /** Raw-HTML fallback for eBay via ScraperAPI's generic endpoint. Same
+   *  limiter + budget as every other call — a fallback that bypassed the
+   *  chokepoint would defeat its purpose. */
+  async ebaySearchHtml(req: SearchPageRequest): Promise<string> {
+    if (!this.budget.canDispatch()) {
+      throw new BudgetDenied(this.budget.exhaustionReason() ?? 'time_exhausted');
+    }
+    return this.limiter.run(async () => {
+      if (!this.budget.canDispatch()) {
+        throw new BudgetDenied(this.budget.exhaustionReason() ?? 'time_exhausted');
+      }
+      this.budget.spend('ebay');
+      if (this.mock) return ''; // structured mock data never triggers the fallback
+
+      const target = encodeURIComponent(
+        `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(req.query)}&_ipg=60&_pgn=${req.page}`
+      );
+      const url = `https://api.scraperapi.com/?api_key=${this.apiKey}&url=${target}`;
+      const res = await fetchWithTimeout(url, REQUEST_TIMEOUT_MS);
+      if (!res.ok) {
+        throw new Error(`ScraperAPI ebay-html p${req.page} "${req.query}": HTTP ${res.status}`);
+      }
+      return res.text();
+    });
+  }
+
   private buildUrl({ platform, query, page }: SearchPageRequest): string {
     const q = encodeURIComponent(query);
     if (platform === 'amazon') {
       return `${BASE}/amazon/search/v1?api_key=${this.apiKey}&query=${q}&tld=com&page=${page}`;
     }
-    // eBay structured search. NOTE: verified defensively — the normalizer
-    // tolerates several plausible response shapes (see ebay.ts).
-    return `${BASE}/ebay/search?api_key=${this.apiKey}&query=${q}&tld=com&page_number=${page}`;
+    // eBay structured search — verified live 2026-07: the version-less
+    // /ebay/search path returns HTTP 200 with an array of EMPTY objects
+    // (a silent trap), and the page param is `page`, not `page_number`.
+    // /v2 returns a root array of populated items (see ebay.ts).
+    return `${BASE}/ebay/search/v2?api_key=${this.apiKey}&query=${q}&tld=com&page=${page}`;
   }
 }
 

@@ -88,8 +88,23 @@ cheap unrelated items and eBay auctions; the dependency is the lesser evil.
   reshoots their own product photos evades it; the upgrade path is a CLIP-style
   embedding signal, which slots in as a fifth signal without touching the
   combiner.
-- **eBay response shape** was the biggest unknown at design time (this was
-  built without live API access); the normalizer tolerates several shapes and
-  logs top-level keys on zero results so a mismatch is diagnosable in one look.
+- **eBay's structured endpoint is a per-request coin flip** (found during live
+  validation): when eBay serves its new `s-card` markup, ScraperAPI's extractor
+  returns the correct item *count* but every object empty — an endpoint that
+  looks healthy until you send it a niche query. The pipeline probes eBay once
+  before the fan-out and adaptively switches the job to fetching raw HTML
+  (through the same budget chokepoint) parsed by our own `s-card` parser; it
+  self-heals to zero extra cost if ScraperAPI fixes their extractor. The
+  parser is regex-over-stable-anchors by choice (`data-listingid`, `/itm/<id>`,
+  `s-card__price`) — dependency-light, loud when it parses nothing.
+- **eBay sponsored labels are not detectable** in the new markup: every card
+  contains a transparent `derosnopS` decoy and the real label is homoglyph text
+  inside a base64 SVG. We report `sponsored` as unknown rather than guess.
 - Same counterfeit listed by multiple sellers intentionally appears as
   multiple results — each listing is a separate takedown target.
+- **A live scan's top eBay results are dominated by second-hand resales** of
+  authentic Comfrt garments — brand + title match, seller-taken photos
+  (pHash distances 18+, correctly no near-exact match), plausible used prices.
+  Distinguishing legal resale from counterfeiting needs evidence outside a
+  search page (seller history, image forensics); the scorer makes this visible
+  in its reasons rather than pretending to resolve it.

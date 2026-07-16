@@ -34,6 +34,11 @@ export function brandFuzzy(title: string): SignalResult {
       if (DICTIONARY_EXCLUDE.has(w)) continue;
       if (Math.abs(w.length - BRAND.length) > 2) continue;
       const d = levenshtein(w, BRAND);
+      // Distance-2 must keep the distinctive "comf" stem: a lookalike exists
+      // to be mistaken for the brand, so it preserves the recognizable part.
+      // Without this, common words two edits away ("combat" in cargo-pants
+      // titles — 4 hits in the first live run) score as brand evasion.
+      if (d === 2 && !w.startsWith(BRAND.slice(0, 4))) continue;
       if (d > 0 && d <= 2) {
         nearMiss = w;
         break;
