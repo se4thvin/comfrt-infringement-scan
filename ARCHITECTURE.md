@@ -13,10 +13,12 @@ Streams is fine at this scale) in three stages, mirroring the demo's phases:
 
 1. `plan` → expand a client's brand config (queries, marketplaces, reference
    set version) into page-fetch tasks.
-2. `fetch` → one task per (platform, query, page): call ScraperAPI, normalize,
-   dedupe against the job's seen-set (Redis SET), write listings, text-score
-   them immediately (cheap, in-process), enqueue image tasks for candidates
-   above the floor.
+2. `fetch` → one task per (platform, query, page): call ScraperAPI, validate
+   the response *shape* and fall back to raw-HTML parsing when a structured
+   endpoint degrades (live finding: eBay's returned the right item count with
+   every field empty), normalize, dedupe against the job's seen-set (Redis
+   SET), write listings, text-score them immediately (cheap, in-process),
+   enqueue image tasks for candidates above the floor.
 3. `image` → fetch image → pHash/embed → final score → write result, publish
    `result.updated` to the job's pub/sub channel.
 
@@ -41,9 +43,9 @@ in Redis counters; when both hit zero the job is marked done.
 
 - **Postgres**: `clients`, `brand_configs` (queries, price bands, reference
   set version), `jobs` (status, budgets, counters, done_reason), `listings`
-  (platform, external_id, title, price, url — unique on platform+external_id
-  per client), `scores` (job_id, listing_id, probability, per-signal raw
-  JSONB, reasons). Keeping raw signal values is what makes historical scores
+  (platform, external_id, title, price, url, seller, condition — unique on
+  platform+external_id per client), `scores` (job_id, listing_id, probability,
+  per-signal raw JSONB, reasons). Keeping raw signal values is what makes historical scores
   re-explainable after weight changes.
 - **Object storage (S3)**: reference images, fetched listing images, and raw
   scraper responses (short TTL) — replayable without re-spending budget.
