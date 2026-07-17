@@ -2,26 +2,40 @@
 
 Simulates a simplified infringement-detection pipeline: triggers a search job
 across Amazon + eBay (via ScraperAPI), scores every deduped listing with four
-independent signals, and streams a ranked, explainable result list to the UI
-as evidence arrives.
+independent signals (plus a contextual fifth), and streams a ranked,
+explainable result list to the UI as evidence arrives.
 
 ## Run it
 
+Requires Node 18.17+ (20 recommended). No other setup — the reference images
+are committed and `sharp` installs prebuilt binaries.
+
 ```bash
 npm install
-cp .env.example .env.local        # key is pre-filled from the brief
-npm run dev                       # then open http://localhost:3000 and hit "Run scan"
+cp .env.example .env.local        # ScraperAPI key, pre-filled from the brief
+npm run dev                       # open http://localhost:3000 and hit "Run scan"
 ```
 
-The 8 authentic reference images are committed to the repo
-(`lib/reference/images/`), so scoring has zero runtime dependency on
-comfrt.com. To refresh them against the live catalog: `npm run fetch-reference`
-(uses Shopify's public `/products.json` — flagship handles are pinned in
-`scripts/fetch-reference.mjs` and mirrored by `REFERENCE_TITLES`).
+**What a live scan looks like:** first provisional results appear within
+~15 seconds; the run typically completes in 30s–2min (hard ceiling 4min).
+One scan makes ~24–30 ScraperAPI requests against the ~120 soft budget —
+the UI shows the count per platform live. Warnings like *"eBay structured
+API returned field-less items … switching to HTML parsing"* are the
+pipeline's fallback working as designed, not an error (see Known
+limitations). Expand any result row to see why it scored what it did.
 
-No network / no key? `MOCK_MODE=1 npm run dev` runs the identical pipeline
-against fixture listings (including synthetic reference images) — every code
-path except the literal ScraperAPI HTTP call is exercised.
+**No key / no network?** `MOCK_MODE=1 npm run dev` runs the identical
+pipeline against 21 fixture listings covering the archetypes the scorer must
+separate (stolen photos, homoglyph brands, evasion language, unrelated
+noise), scoring images against the committed reference set — every code path
+except the literal ScraperAPI HTTP call is exercised, ~5s per run, zero
+external calls.
+
+The 8 authentic reference images live in `lib/reference/images/`, so scoring
+has zero runtime dependency on comfrt.com. To refresh them against the live
+catalog: `npm run fetch-reference` (Shopify's public `/products.json`;
+flagship handles pinned in `scripts/fetch-reference.mjs`, mirrored by
+`REFERENCE_TITLES`).
 
 ## How it works
 
