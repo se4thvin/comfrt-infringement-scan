@@ -98,8 +98,8 @@ export default function Page() {
   const total = results.size;
 
   return (
-    <main>
-      <div className="toolbar">
+    <>
+      <header className="toolbar">
         <div className="toolbar-inner">
           <span className="brand">Comfrt Scan</span>
           <StatusLine running={running} stats={stats} done={done} total={total} />
@@ -107,8 +107,9 @@ export default function Page() {
             {running ? 'Scanning…' : total > 0 ? 'Scan again' : 'Run scan'}
           </button>
         </div>
-      </div>
+      </header>
 
+    <main>
       <div className="hero">
         <h1>Infringement scan</h1>
         <p className="caption">
@@ -217,6 +218,7 @@ export default function Page() {
         </div>
       )}
     </main>
+    </>
   );
 }
 
