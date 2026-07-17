@@ -34,8 +34,13 @@ export function priceAnomaly(
   // the raw ratio is exposed for inspection.
   let p = ratio >= 1 ? 0 : (1 - ratio) * 0.75;
 
+  // Auctions and used-condition listings are structurally cheap — early bids
+  // and second-hand pricing, not counterfeit pricing. (Ground-truthed in live
+  // validation: top low-priced eBay hits were pre-owned resales from thrift
+  // sellers.) Counterfeiters overwhelmingly list as "new".
   const auction = listing.listingType === 'auction';
-  if (auction) p *= 0.5;
+  const used = listing.condition === 'used';
+  if (auction || used) p *= 0.5;
 
   return {
     p,
@@ -44,10 +49,11 @@ export function priceAnomaly(
       authenticFloor: min,
       ratioToFloor: Math.round(ratio * 100) / 100,
       auctionAdjusted: auction ? 1 : 0,
+      usedConditionAdjusted: used ? 1 : 0,
     },
     reason:
       p >= 0.3
-        ? `Priced at $${listing.price} — far below the authentic ~$${min}+ retail floor${auction ? ' (discounted: auction format)' : ''}`
+        ? `Priced at $${listing.price} — far below the authentic ~$${min}+ retail floor${auction ? ' (discounted: auction format)' : used ? ' (discounted: used condition)' : ''}`
         : undefined,
   };
 }

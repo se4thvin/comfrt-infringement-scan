@@ -15,6 +15,9 @@ export interface Listing {
   sponsored?: boolean;
   /** eBay: 'auction' listings get a down-weighted price signal */
   listingType?: 'auction' | 'fixed' | 'unknown';
+  /** eBay: 'used' is structural evidence of second-hand resale (halves the
+   *  price signal, like auctions) — counterfeiters overwhelmingly sell "new" */
+  condition?: 'new' | 'used' | 'unknown';
   sourceQuery: string;
 }
 

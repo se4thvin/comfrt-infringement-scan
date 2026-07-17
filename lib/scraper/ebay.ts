@@ -77,6 +77,7 @@ export function normalizeEbay(raw: unknown, sourceQuery: string): Listing[] {
       priceString: typeof priceRaw === 'string' ? priceRaw : price != null ? `$${price}` : undefined,
       sponsored: item.sponsored === true,
       listingType: isAuction ? 'auction' : format ? 'fixed' : 'unknown',
+      condition: parseCondition(str(item.condition)),
       sourceQuery,
     });
   }
@@ -125,6 +126,9 @@ export function parseEbayHtml(html: string, sourceQuery: string): Listing[] {
       /(?:src|data-defer-load)=["']?(https:\/\/i\.ebayimg\.com\/[^"'\s>]+)/
     )?.[1];
     const priceString = decodeEntities(card.match(/s-card__price[^>]*>([^<]{1,40})</)?.[1]);
+    // Condition renders as its own styled-text span ("Pre-Owned", "Brand New",
+    // "New with tags", "New (Other)") — match the phrases, not the markup.
+    const condText = card.match(/>\s*((?:Pre-Owned|Brand New|New \(Other\)|New with(?:out)? tags|Open Box|Refurbished|For parts)[^<]{0,30})</i)?.[1];
     if (!title || !url) continue;
 
     out.push({
@@ -142,6 +146,7 @@ export function parseEbayHtml(html: string, sourceQuery: string): Listing[] {
       // and nothing downstream scores on it — so we don't claim it.
       sponsored: undefined,
       listingType: /\b\d+\s*bids?\b/i.test(card) ? 'auction' : 'fixed',
+      condition: parseCondition(condText),
       sourceQuery,
     });
   }
@@ -152,6 +157,14 @@ export function parseEbayHtml(html: string, sourceQuery: string): Listing[] {
     );
   }
   return out;
+}
+
+function parseCondition(s?: string): 'new' | 'used' | 'unknown' {
+  if (!s) return 'unknown';
+  const t = s.toLowerCase();
+  if (/pre-owned|used|refurbished|for parts/.test(t)) return 'used';
+  if (/new/.test(t)) return 'new'; // covers Brand New / New (Other) / with(out) tags
+  return 'unknown';
 }
 
 function decodeEntities(s?: string): string | undefined {

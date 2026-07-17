@@ -31,6 +31,28 @@ const FLOOR = 0.88;
 export function scoreText(listing: Listing): ScoredListing {
   const title = titleSimilarity(listing.title);
   const brand = brandFuzzy(listing.title);
+
+  // Interaction rule (ground-truthed in live validation): the brand name on a
+  // listing whose title matches NO actual product is keyword-squatting — e.g.
+  // a $9.99 "Generic" hoodie dress stuffing "Comfrt Pullover" into its title.
+  // That's a stronger infringement tell than brand + faithful product title,
+  // which on eBay usually means authentic resale. USED listings are exempt:
+  // squatting is a new-goods game, and second-hand sellers describe items
+  // generically ("Men's XL Gray Pullover Hoodie") without naming the line —
+  // without the exemption this rule mislabeled 25% of a live scan. Signals
+  // stay independently measured (raw untouched); this is a documented
+  // combiner rule, like the category gate below.
+  const titleSim = Number(title.raw.bestSimilarity ?? 0);
+  if (
+    brand.raw.exactMention === 1 &&
+    !brand.raw.evasionPhrase &&
+    titleSim < 0.35 &&
+    listing.condition !== 'used'
+  ) {
+    brand.p = Math.max(brand.p, 0.7);
+    brand.reason = `Brand name "comfrt" used on a product matching no authentic listing (keyword squatting)`;
+  }
+
   const categoryConfirmed = title.p >= 0.25 || brand.p >= 0.45;
   const price = priceAnomaly(listing, categoryConfirmed);
 
