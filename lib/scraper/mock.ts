@@ -14,6 +14,7 @@ interface MockItem {
   price: number;
   img?: string; // path under /api/reference-image?i=N&distort=D
   auction?: boolean;
+  location?: string; // exercises the provenance signal's foreign-shipping tell
 }
 
 const AMAZON_POOL: MockItem[] = [
@@ -34,7 +35,7 @@ const AMAZON_POOL: MockItem[] = [
 const EBAY_POOL: MockItem[] = [
   { title: 'Comfrt Minimalist Hoodie Size L Cream NEW WITH TAGS', price: 18.0, img: '0:slight', auction: true },
   { title: 'NWT Comfrt Snak Hoodie Lavender Oversized', price: 25.0, img: '2:none' },
-  { title: 'comfrt hoodie replica high quality same factory', price: 9.99, img: '3:slight' },
+  { title: 'comfrt hoodie replica high quality same factory', price: 9.99, img: '3:slight', location: 'China' },
   { title: 'Vintage Champion Reverse Weave Hoodie XL', price: 32.0, auction: true },
   { title: 'Comfrt Varsity Hoodie Bundle x2 Wholesale', price: 21.5, img: '4:slight' },
   { title: 'Oversized comfy cloud hoodie unbranded bulk lot 10pcs', price: 45.0, img: '5:heavy' },
@@ -74,6 +75,7 @@ export function mockSearchResponse(req: SearchPageRequest): unknown {
       image,
       url: `https://www.ebay.com/itm/${200000000000 + idNum}`,
       listing_type: m.auction ? 'auction' : 'fixed_price',
+      shipping_location: m.location,
     };
   });
 

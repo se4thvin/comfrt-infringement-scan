@@ -18,6 +18,8 @@ export interface Listing {
   /** eBay: 'used' is structural evidence of second-hand resale (halves the
    *  price signal, like auctions) — counterfeiters overwhelmingly sell "new" */
   condition?: 'new' | 'used' | 'unknown';
+  /** eBay: "Located in <place>" from the search card, when present */
+  itemLocation?: string;
   sourceQuery: string;
 }
 

@@ -78,6 +78,7 @@ export function normalizeEbay(raw: unknown, sourceQuery: string): Listing[] {
       sponsored: item.sponsored === true,
       listingType: isAuction ? 'auction' : format ? 'fixed' : 'unknown',
       condition: parseCondition(str(item.condition)),
+      itemLocation: str(item.shipping_location) ?? str(item.item_location),
       sourceQuery,
     });
   }
@@ -147,6 +148,7 @@ export function parseEbayHtml(html: string, sourceQuery: string): Listing[] {
       sponsored: undefined,
       listingType: /\b\d+\s*bids?\b/i.test(card) ? 'auction' : 'fixed',
       condition: parseCondition(condText),
+      itemLocation: decodeEntities(card.match(/>Located in ([^<]{2,60})</)?.[1]),
       sourceQuery,
     });
   }

@@ -51,6 +51,7 @@ search fan-out ──► normalize ──► dedupe ──► TEXT score ──�
 | `brandAnalysis` | exact "comfrt" / near-miss spellings / homoglyphs (Cømfrt, C0MFRT) / evasion phrases ("dupe", "replica", "same factory") | 0.8 |
 | `titleSimilarity` | token Jaccard + bigram containment vs canonical product names (brand token excluded — no double counting) | 0.55 |
 | `priceAnomaly` | distance below the authentic retail floor; **gated** on category confirmation, **halved** for eBay auctions and used-condition listings | 0.5 |
+| `provenance` *(contextual 5th)* | where the goods come from: new brand-related items shipping from outside the US; template-titled batch inventory (one seller, many variants — manufacturer depth, not a closet cleanout) | 0.4 |
 
 ### Combination: noisy-OR + dominant-signal floor
 
@@ -75,6 +76,40 @@ not calibrated probabilities — calibration would need labeled takedown
 outcomes. The price signal is deliberately *not* independent of the text
 signals (it's gated on them) because the ungated version false-positives on
 cheap unrelated items and eBay auctions; the dependency is the lesser evil.
+
+## Live validation: what checking the top results against reality taught us
+
+After the first live scan, the top-ranked listings were manually verified
+against the actual marketplace pages (seller profiles, condition, photos,
+official colorways and prices from comfrt.com's catalog). Findings:
+
+- **The top eBay results were authentic second-hand resales**, not
+  counterfeits — e.g. rank #1 was a pre-owned hoodie from a 16K-feedback
+  thrift reseller. Every "suspicious" colorway was a real official colorway;
+  every "suspicious" price was an ordinary used-market price.
+- **The one genuinely infringing listing ranked #7**: a $9.99 Brand-"Generic"
+  hoodie dress stuffing "Comfrt Pullover" into its title and "comfrt travel
+  hoodie" into its hidden keywords — textbook trademark keyword-squatting.
+- **The structural lesson:** brand-mention and title-similarity measure *"is
+  this about Comfrt?"*, not *"is this fraudulent?"*. On eBay the most
+  brand-related listings are legal first-sale resales, so relatedness signals
+  alone fill the top ranks with the benign class. The evidence that actually
+  separates counterfeit from resale was never in the title: condition, seller
+  shape, brand-vs-title mismatch, provenance.
+
+Three scoring changes came directly out of that ground-truthing — the
+keyword-squat rule, used-condition awareness, and the provenance signal (all
+described above). Re-scoring the same scan afterwards put the keyword-squatters
+at #1–2 and compressed the resales.
+
+**The roadmap this implies** (out of scope here, sketched in
+[ARCHITECTURE.md](./ARCHITECTURE.md)): score sellers, not just listings
+(account age, inventory depth, specialization); classify the *violation type*
+(keyword-squat vs stolen-photo vs suspected-fake — different evidence,
+different takedown paths); and above all close the labeling loop — human
+review of the top-K feeds labels back into the weights, making "accurate"
+a measurable precision@K instead of a hope. Test purchases remain the only
+gold labels for physical fakes.
 
 ### Orchestration constraints
 

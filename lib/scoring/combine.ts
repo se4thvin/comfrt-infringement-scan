@@ -22,7 +22,7 @@ import type { ReferenceSet } from '../reference/prepare';
  *   surfaced so the judgment is inspectable.
  */
 
-const W = { image: 0.9, brand: 0.8, title: 0.55, price: 0.5 };
+const W = { image: 0.9, brand: 0.8, title: 0.55, price: 0.5, provenance: 0.4 };
 
 const HAMMING_EXACT = 6;   // ≤ this → dominant floor
 const HAMMING_NEAR = 14;   // ≤ this → strong-but-not-conclusive image evidence
@@ -61,8 +61,73 @@ export function scoreText(listing: Listing): ScoredListing {
     brandAnalysis: brand,
     titleSimilarity: title,
     priceAnomaly: price,
+    provenance: provenance(listing, brand),
   };
   return assemble(listing, signals, true);
+}
+
+/* Provenance: where do these goods come from? A 5th, contextual signal born
+ * from live validation — the evidence that separated counterfeit from legal
+ * resale was never in the title. Two cheap tells from search-page data:
+ *  - a NEW brand-related item shipping from outside the US (Comfrt sells
+ *    domestically; overseas-shipped "new" branded goods are the classic
+ *    counterfeit channel);
+ *  - template-titled batch inventory (applyBatchEvidence below): one seller
+ *    listing "COMFRT Minimalist Hoodie in {color} - Size {n}" across many
+ *    variants has manufacturer-depth inventory, not a closet cleanout.
+ * Modest weight (0.4): these corroborate, they do not convict. */
+function provenance(listing: Listing, brand: SignalResult): SignalResult {
+  const brandRelated = brand.p >= 0.45;
+  const notUsed = listing.condition !== 'used';
+  const loc = listing.itemLocation;
+  const foreign = loc != null && !/united states|usa|u\.s\./i.test(loc);
+
+  if (loc == null) {
+    return { p: 0, raw: { status: 'no location data', batchSize: null }, unavailable: true };
+  }
+  const fires = foreign && brandRelated && notUsed;
+  return {
+    p: fires ? 0.5 : 0,
+    raw: { itemLocation: loc, batchSize: null },
+    reason: fires
+      ? `New brand-related listing shipping from "${loc}" — outside the brand's domestic retail channel`
+      : undefined,
+  };
+}
+
+/** Group key for template-title detection: tokens minus sizes/numbers, first
+ *  four kept + token count. Decorated inventory titles ("...in Panther - Size
+ *  2XL") collide; organic resale titles rarely do. ≥5 tokens required — short
+ *  plain titles ("Comfrt Minimalist Hoodie") collide across unrelated sellers. */
+export function templateKey(title: string): string | null {
+  const SIZES = /^(xxs|xs|s|m|l|xl|xxl|\dxl?|small|medium|large|x-large|xx-large|size|sz)$/;
+  const tokens = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((t) => t && !SIZES.test(t) && !/^\d+$/.test(t));
+  if (tokens.length < 5) return null;
+  return `${tokens.slice(0, 4).join(' ')}|${tokens.length}`;
+}
+
+/** Upgrade the provenance signal once the whole result set is known: this
+ *  listing's title template appears `batchSize` times as new-condition
+ *  inventory. Called from the job's finalization pass. */
+export function applyBatchEvidence(scored: ScoredListing, batchSize: number): ScoredListing {
+  if (batchSize < 3) return scored;
+  if (scored.listing.condition === 'used') return scored;
+  if ((scored.signals.brandAnalysis?.p ?? 0) < 0.45) return scored;
+
+  const prev = scored.signals.provenance ?? { p: 0, raw: {} };
+  const provenance: SignalResult = {
+    p: Math.max(prev.p, 0.45),
+    raw: { ...prev.raw, batchSize },
+    reason:
+      `One of ${batchSize} near-identical new listings (template title) — ` +
+      `inventory-scale seller, not an individual resale` +
+      (prev.reason ? `; ${prev.reason.charAt(0).toLowerCase()}${prev.reason.slice(1)}` : ''),
+  };
+  return assemble(scored.listing, { ...scored.signals, provenance }, scored.provisional);
 }
 
 export function applyImageSignal(
@@ -126,6 +191,7 @@ function assemble(
     brandAnalysis: W.brand,
     titleSimilarity: W.title,
     priceAnomaly: W.price,
+    provenance: W.provenance,
   };
 
   let probNone = 1;

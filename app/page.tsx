@@ -93,7 +93,7 @@ export default function Page() {
     <main>
       <div className="masthead">
         <h1>Comfrt infringement scan</h1>
-        <span className="sub">Amazon + eBay · scored by image, brand, title and price signals</span>
+        <span className="sub">Amazon + eBay · scored by image, brand, title, price and provenance signals</span>
       </div>
 
       <div className="controls">

@@ -78,3 +78,17 @@ in Redis counters; when both hit zero the job is marked done.
   eventual labeled data that turns heuristic weights into a calibrated model.
 - Structured logs keyed by `client_id / job_id / task_id`; traces across
   stage boundaries.
+
+## Closing the accuracy loop
+
+Live validation of this demo showed the core precision problem: relatedness
+signals (brand, title) rank legal second-hand resales alongside true
+infringement. At scale the fix is a feedback loop, not more heuristics:
+score → human review queue (sorted by score, per client) → reviewer labels
+(counterfeit / resale / keyword-squat / benign) → labels retrain the signal
+weights (logistic regression over the existing raw values keeps every score
+explainable) → measure **precision@K**, since reviewer time is the scarce
+resource. Seller-level features (account age, inventory depth, listing-title
+templates — the strongest separators found during validation) become
+first-class once results are stored per seller, and violation *type*
+classification routes each finding to the right takedown path.

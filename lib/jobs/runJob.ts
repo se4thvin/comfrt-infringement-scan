@@ -5,7 +5,7 @@ import { ScraperClient, BudgetDenied, fetchWithTimeout } from '../scraper/client
 import { normalizeAmazon } from '../scraper/amazon';
 import { normalizeEbay, parseEbayHtml, structuredCameBackEmpty } from '../scraper/ebay';
 import type { Listing, Platform, DoneReason } from '../scraper/types';
-import { scoreText, applyImageSignal } from '../scoring/combine';
+import { scoreText, applyImageSignal, templateKey, applyBatchEvidence } from '../scoring/combine';
 import { prepareReferenceSet } from '../reference/prepare';
 import { phashFromBuffer } from '../scoring/signals/imageHash';
 
@@ -184,13 +184,23 @@ export async function runJob(job: JobState): Promise<void> {
       )
     );
 
-    // Listings never imaged (below floor / budget ran dry): finalize them so
-    // nothing is left marked "pending" forever.
+    // Finalization pass. Two jobs: (1) listings never imaged (below floor /
+    // budget ran dry) get their image signal resolved so nothing is left
+    // "pending" forever; (2) batch evidence — template-titled inventory can
+    // only be detected once the whole result set is known, so it lands here.
+    const templateCounts = new Map<string, number>();
+    for (const s of scored.values()) {
+      const t = templateKey(s.listing.title);
+      if (t) templateCounts.set(t, (templateCounts.get(t) ?? 0) + 1);
+    }
     for (const [key, s] of scored) {
-      if (s.provisional) {
-        const finalized = applyImageSignal(s, null, ref);
-        scored.set(key, finalized);
-        publish(job, { type: 'listing', data: finalized });
+      let updated = s.provisional ? applyImageSignal(s, null, ref) : s;
+      const t = templateKey(updated.listing.title);
+      const batch = t ? templateCounts.get(t) ?? 0 : 0;
+      updated = applyBatchEvidence(updated, batch);
+      if (updated !== s) {
+        scored.set(key, updated);
+        publish(job, { type: 'listing', data: updated });
       }
     }
 
